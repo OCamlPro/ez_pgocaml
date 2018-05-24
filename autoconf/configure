@@ -1796,7 +1796,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 PROJECTURE_ARGS=$*
 
-OCAML_MINIMAL_VERSION=3.12.1
+OCAML_MINIMAL_VERSION=4.02.3
 
 
 # Check whether --enable-version-check was given.
@@ -4187,7 +4187,7 @@ fi
 OPAM_REPO=/home/lefessan/GIT/ocp-public/opam-repository
 OPAM_REPO_OFFICIAL_REMOTE=ocaml
 OPAM_REPO_FORK_REMOTE=origin
-DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/ez-api/archive/
+DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/ez-pgocaml/archive/
 
 ###############################################################
 ##                                                            #

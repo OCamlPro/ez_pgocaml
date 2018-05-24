@@ -10,7 +10,7 @@
 AC_INIT(ez-pgocaml,0.1)
 PROJECTURE_ARGS=$*
 AC_COPYRIGHT(Copyright 2018-2018 OCamlPro SAS)
-OCAML_MINIMAL_VERSION=3.12.1
+OCAML_MINIMAL_VERSION=4.02.3
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_ARG_ENABLE(version-check,
@@ -140,7 +140,7 @@ fi
 OPAM_REPO=/home/lefessan/GIT/ocp-public/opam-repository
 OPAM_REPO_OFFICIAL_REMOTE=ocaml
 OPAM_REPO_FORK_REMOTE=origin
-DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/ez-api/archive/
+DOWNLOAD_URL_PREFIX=http://github.com/OCamlPro/ez-pgocaml/archive/
 
 ###############################################################
 ##                                                            #

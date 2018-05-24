@@ -14,8 +14,8 @@ authors: [
   "Fabrice Le Fessant <fabrice.le_fessant@ocamlpro.com>"
 ]
 homepage: "http://tezos.ocamlpro.com/"
-dev-repo: "https://github.com/OCamlPro/ez-api.git"
-bug-reports: "https://github.com/OCamlPro/ez-api/issues"
+dev-repo: "https://github.com/OCamlPro/ez-pgocaml.git"
+bug-reports: "https://github.com/OCamlPro/ez-pgocaml/issues"
 build: [
   [     "./configure"
     "--prefix"
@@ -28,7 +28,7 @@ install: [
 ]
 remove: [
 ]
-available: [ocaml-version >= "3.12.1"]
+available: [ocaml-version >= "4.02.3"]
 depends: [
      "ocamlfind"
      "ocp-build"
