@@ -48,17 +48,18 @@ let execs ?verbose dbh queries =
   List.iter (fun query ->
       exec ?verbose dbh query) queries
 
+let printf ?verbose ?callback dbh fmt =
+  Printf.kprintf (fun s -> exec ?verbose ?callback dbh s) fmt
+
 
 let createdb ?(verbose=true) database =
   let dbh = connect "postgres" in
-  Printf.kprintf (fun s -> exec ~verbose dbh s)
-                 "CREATE DATABASE %s" database;
+  printf ~verbose dbh "CREATE DATABASE %s" database;
   close dbh
 
 let dropdb ?(verbose=true) database =
   let dbh = connect "postgres" in
-  Printf.kprintf (fun s -> exec ~verbose dbh s)
-                 "DROP DATABASE %s" database;
+  printf ~verbose dbh "DROP DATABASE %s" database;
   close dbh
 
 let begin_tr dbh = exec dbh "BEGIN"
@@ -85,66 +86,151 @@ let touch_witness ?witness version =
        Printf.fprintf oc "%d\n" version;
        close_out oc
 
-let init_version0 dbh =
+let ezpg_to_version_1 dbh =
+  exec dbh {| CREATE TABLE ezpg_upgrades (version INTEGER, command TEXT NOT NULL) |};
+  exec dbh {| CREATE TABLE ezpg_downgrades (version INTEGER, command TEXT NOT NULL) |};
+  printf dbh {| INSERT INTO ezpg_info VALUES ('ezpg_version',0) |};
+  ()
+
+let init dbh =
   exec dbh "CREATE SCHEMA db";
   exec dbh "SET search_path TO db,public";
-  exec dbh {|
-            CREATE TABLE info (name VARCHAR PRIMARY KEY, value INTEGER)
-            |};
-  exec dbh {|
-            INSERT INTO info VALUES ('version',0)
-            |};
+  printf dbh {| CREATE TABLE ezpg_info (name VARCHAR PRIMARY KEY, value INTEGER) |};
+  printf dbh {| INSERT INTO ezpg_info VALUES ('version',0) |};
+  ezpg_to_version_1 dbh;
   ()
 
 let set_version dbh version =
-  Printf.kprintf (fun s -> exec dbh s)
-                 "UPDATE info SET value = %d WHERE name = 'version'" version
+  printf dbh
+    "UPDATE ezpg_info SET value = %d WHERE name = 'version'" version
 
-let update_version ~target ?witness dbh version versions =
-  let version = ref version in
-  while !version < target do
-    Printf.eprintf "version = %d\n%!" !version;
-    begin
-      try
-        let f = List.assoc !version versions in
-        begin_tr dbh;
-        f dbh;
-        set_version dbh (!version+1);
-        end_tr dbh;
-        touch_witness ?witness !version;
-        version := !version +1;
-      with Not_found ->
-        Printf.eprintf "Your database version %d is unsupported.\n" !version;
-        Printf.eprintf "Maximal supported version is %d.\n%!" target;
-        Printf.eprintf "Aborting.\n%!";
-        exit 2
-    end;
+let escape_string_content s =
+  let len = String.length s in
+  let b = Buffer.create len in
+  for i = 0 to len-1 do
+    match s.[i] with
+      '\'' -> Buffer.add_string b "\\'"
+    | c -> Buffer.add_char b c
   done;
+  Buffer.contents b
 
-  exec ~verbose:false dbh {|
-                           SELECT value FROM info WHERE name = 'version'
-                           |} ~callback:(fun res ->
-         let version =
-           match res with
-           | Some [[ version ]] -> (try int_of_string version with _ -> -1)
-           | _ -> -1
-         in
-         if version <> target then begin
-             Printf.eprintf "Error: database update failed.\n%!";
-             Printf.eprintf "  Cannot run on this database schema.\n%!";
-             exit 2
-           end;
-         Printf.printf "EzPG: database is up-to-date at version %d\n%!"
-                       target);
+
+let upgrade ?verbose ~version ?(downgrade=[]) ~dbh cmds =
+  List.iter (fun query ->
+      exec ?verbose dbh query;
+    ) cmds;
+  List.iter (fun cmd ->
+      printf ?verbose dbh
+        "INSERT INTO ezpg_upgrades VALUES (%d, '%s')"
+        version (escape_string_content cmd)) cmds;
+  List.iter (fun cmd ->
+      printf ?verbose dbh
+        "INSERT INTO ezpg_downgrades (version, command) VALUES (%d, '%s')"
+        version
+        (escape_string_content cmd)) downgrade;
   ()
 
-let update ?(verbose=false)
-           ~versions
-           ?(target = List.length versions) ?witness dbh =
+(* Note: version is the target version, after the downgrade *)
+let downgrade ?verbose ~version ~dbh cmds =
+  List.iter (fun query ->
+      exec ?verbose dbh query;
+    ) cmds;
+  printf ?verbose dbh
+    "DELETE FROM ezpg_upgrades WHERE version = %d"
+    version;
+  printf ?verbose dbh
+    "DELETE FROM ezpg_downgrades WHERE version = %d"
+    version;
+  ()
 
-  exec ~verbose dbh {|
-            SELECT value FROM info WHERE name = 'version'
-            |} ~callback:(fun res ->
+let check_upgrade dbh ~target =
+  printf ~verbose:false dbh ~callback:(fun res ->
+      let version =
+        match res with
+        | Some [[ version ]] -> (try int_of_string version with _ -> -1)
+        | _ -> -1
+      in
+      if version <> target then begin
+        Printf.eprintf "Error: database update failed.\n%!";
+        Printf.eprintf "  Cannot run on this database schema.\n%!";
+        exit 2
+      end;
+      Printf.printf "EzPG: database is up-to-date at version %d\n%!"
+        target)
+    {| SELECT value FROM ezpg_info WHERE name = 'version' |};
+  ()
+
+let upgrade_version ~target ~allow_downgrade ~upgrades ~downgrades
+    ?witness dbh version =
+  if version = target then
+    Printf.printf "EzPG: database is up-to-date at version %d\n%!"
+      target
+  else
+
+  if version < target then begin
+
+    let version = ref version in
+    while !version < target do
+      Printf.eprintf "version = %d\n%!" !version;
+      begin
+        try
+          let f = List.assoc !version upgrades in
+          begin_tr dbh;
+          f dbh !version;
+          set_version dbh (!version+1);
+          end_tr dbh;
+          touch_witness ?witness !version;
+          version := !version +1;
+        with Not_found ->
+          Printf.eprintf "Your database version %d is unsupported.\n" !version;
+          Printf.eprintf "Maximal supported version is %d.\n%!" target;
+          Printf.eprintf "Aborting.\n%!";
+          exit 2
+      end;
+    done;
+    check_upgrade dbh ~target
+  end else begin
+    if not allow_downgrade then begin
+      Printf.eprintf "Error: your database version is %d, we need %d.\n%!"
+        version target;
+      Printf.eprintf "   Downgrade is disabled. You may try to run the updater with:\n";
+      Printf.eprintf "      --allow-downgrade.\n%!";
+      Printf.eprintf "Aborting.\n%!";
+      exit 2
+    end;
+
+    let version = ref version in
+    while !version > target do
+      Printf.eprintf "version = %d\n%!" !version;
+      begin
+        try
+          let cmds = List.assoc !version downgrades in
+          begin_tr dbh;
+          downgrade ~dbh cmds ~version:(!version-1);
+          set_version dbh (!version-1);
+          end_tr dbh;
+          touch_witness ?witness !version;
+          version := !version -1;
+        with Not_found ->
+          Printf.eprintf "Your database version %d is unsupported.\n" !version;
+          Printf.eprintf "Maximal supported version is %d.\n%!" target;
+          Printf.eprintf "Aborting.\n%!";
+          exit 2
+      end;
+    done;
+    check_upgrade dbh ~target
+
+
+  end
+
+let upgrade_database ?(verbose=false)
+    ?(downgrades=[])
+    ?(allow_downgrade = false)
+    ~upgrades
+    ?(target = List.length upgrades) ?witness dbh =
+
+  printf ~verbose dbh
+    ~callback:(fun res ->
          let version =
            match res with
            | Some [[ "" ]] -> 0
@@ -153,5 +239,22 @@ let update ?(verbose=false)
            | Some _ -> 0
            | None -> 0
          in
-         update_version ~target ?witness dbh version versions
+         upgrade_version ~target ~allow_downgrade
+           ?witness dbh version ~upgrades ~downgrades
        )
+    {| SELECT value FROM ezpg_info WHERE name = 'version'  |}
+
+let may_upgrade_old_info ?(verbose=true) dbh =
+
+  Printf.eprintf "may_upgrade_old_info...\n%!";
+  exec ~verbose dbh
+    ~callback:(fun res ->
+        match res with
+        | Some [[ _version ]] ->
+          Printf.eprintf "Must upgrade_old_info...\n%!";
+          exec ~verbose dbh
+            {| ALTER TABLE info RENAME TO ezpg_info |};
+          ezpg_to_version_1 dbh
+        | _ -> ()
+      )
+    {| SELECT value FROM info WHERE name = 'version'  |}
