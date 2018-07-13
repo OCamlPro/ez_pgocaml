@@ -1,6 +1,7 @@
 
 # DATABASE=local-db (name of the local copy of the DB)
 # DBUPDATER=db-updater (name of the program that updates the db)
+# DBOLDINFO=--old-info
 
 DBWITNESS=--witness db-version.txt
 
@@ -9,7 +10,8 @@ db-update: db-autoconf db-version.txt
 
 db-update-check:
 	if ocp-build $(DBUPDATER) ; then \
-	./_obuild/$(DBUPDATER)/$(DBUPDATER).asm $(DBWITNESS) $(DATABASE); \
+        	./_obuild/$(DBUPDATER)/$(DBUPDATER).asm \
+                   $(DBOLDINFO) $(DBWITNESS) $(DATABASE); \
 	else \
 	exit 0; \
 	fi

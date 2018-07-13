@@ -22,17 +22,19 @@ val execs : (* same as exec, but with a list of queries *)
   string list ->
   unit
 
-val update :
+val upgrade_database :
   ?verbose:bool -> (* print commands, false by default *)
-  versions: (* migration scripts *)
-    (int * ('a PGOCaml.t -> unit)) list ->
+  ?downgrades: (int * string list) list ->
+  ?allow_downgrade: bool ->
+  upgrades: (* migration scripts *)
+    (int * ('a PGOCaml.t -> int -> unit)) list ->
   ?target:int -> (* target version *)
   ?witness:string -> (* a file modified if the db is modified *)
   'a PGOCaml.t -> (* database handler *)
   unit
 
 val touch_witness : ?witness:string -> int -> unit
-val init_version0 : 'a PGOCaml.t -> unit
+val init : 'a PGOCaml.t -> unit
 
 (* Useful functions to create the initial database *)
 val createdb : ?verbose:bool -> string -> unit
@@ -43,3 +45,15 @@ val end_tr : 'a PGOCaml.t -> unit
 val abort_tr : 'a PGOCaml.t -> unit
 
 val in_tr : 'a PGOCaml.t -> ('a PGOCaml.t -> 'b) -> unit
+
+val upgrade :
+  ?verbose:bool -> version:int ->
+  ?downgrade:string list ->
+  dbh:'c PGOCaml.t -> string list -> unit
+
+val printf :
+  ?verbose:bool ->
+  ?callback:(string list list option -> unit) ->
+  'a PGOCaml.t -> ('b, unit, string, unit) format4 -> 'b
+
+val may_upgrade_old_info : ?verbose:bool -> 'a PGOCaml.t -> unit
