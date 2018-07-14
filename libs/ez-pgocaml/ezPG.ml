@@ -105,15 +105,22 @@ let set_version dbh version =
     "UPDATE ezpg_info SET value = %d WHERE name = 'version'" version
 
 let escape_string_content s =
-  let len = String.length s in
-  let b = Buffer.create len in
-  for i = 0 to len-1 do
-    match s.[i] with
-      '\'' -> Buffer.add_string b "\\'"
-    | c -> Buffer.add_char b c
-  done;
-  Buffer.contents b
-
+  if String.contains s '\'' then
+    let len = String.length s in
+    let b = Buffer.create len in
+    Buffer.add_string b "E'";
+    for i = 0 to len-1 do
+      match s.[i] with
+        ( '\'' | '\\') as c
+        -> Buffer.add_char b '\\'; Buffer.add_char b c
+      | '\r' -> ()
+      | '\n' -> Buffer.add_char b ' '
+      | c -> Buffer.add_char b c
+    done;
+    Buffer.add_char b '\'';
+    Buffer.contents b
+  else
+    Printf.sprintf "'%s'" s
 
 let upgrade ?verbose ~version ?(downgrade=[]) ~dbh cmds =
   List.iter (fun query ->
@@ -121,11 +128,11 @@ let upgrade ?verbose ~version ?(downgrade=[]) ~dbh cmds =
     ) cmds;
   List.iter (fun cmd ->
       printf ?verbose dbh
-        "INSERT INTO ezpg_upgrades VALUES (%d, '%s')"
+        "INSERT INTO ezpg_upgrades VALUES (%d, %s)"
         version (escape_string_content cmd)) cmds;
   List.iter (fun cmd ->
       printf ?verbose dbh
-        "INSERT INTO ezpg_downgrades (version, command) VALUES (%d, '%s')"
+        "INSERT INTO ezpg_downgrades (version, command) VALUES (%d, %s)"
         version
         (escape_string_content cmd)) downgrade;
   ()
