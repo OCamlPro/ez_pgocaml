@@ -244,7 +244,9 @@ let upgrade_database ?(verbose=false)
            | Some [[ version ]] -> int_of_string version
            | Some [] -> 0
            | Some _ -> 0
-           | None -> 0
+           | None -> (* table ezpg_info not found => init *)
+             init dbh;
+             0
          in
          upgrade_version ~target ~allow_downgrade
            ?witness dbh version ~upgrades ~downgrades
