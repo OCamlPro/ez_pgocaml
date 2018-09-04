@@ -92,12 +92,13 @@ let ezpg_to_version_1 dbh =
   printf dbh {| INSERT INTO ezpg_info VALUES ('ezpg_version',0) |};
   ()
 
-let init dbh =
+let init ?witness dbh =
   exec dbh "CREATE SCHEMA db";
   exec dbh "SET search_path TO db,public";
   printf dbh {| CREATE TABLE ezpg_info (name VARCHAR PRIMARY KEY, value INTEGER) |};
   printf dbh {| INSERT INTO ezpg_info VALUES ('version',0) |};
   ezpg_to_version_1 dbh;
+  touch_witness ?witness 0;
   ()
 
 let set_version dbh version =
@@ -245,7 +246,7 @@ let upgrade_database ?(verbose=false)
            | Some [] -> 0
            | Some _ -> 0
            | None -> (* table ezpg_info not found => init *)
-             init dbh;
+             init ?witness dbh;
              0
          in
          upgrade_version ~target ~allow_downgrade

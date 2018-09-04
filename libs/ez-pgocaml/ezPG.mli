@@ -34,7 +34,7 @@ val upgrade_database :
   unit
 
 val touch_witness : ?witness:string -> int -> unit
-val init : 'a PGOCaml.t -> unit
+val init : ?witness:string -> 'a PGOCaml.t -> unit
 
 (* Useful functions to create the initial database *)
 val createdb : ?verbose:bool -> string -> unit

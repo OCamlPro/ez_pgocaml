@@ -44,7 +44,7 @@ let main database ?(downgrades=[]) ~upgrades =
     with _ ->
       EzPG.createdb database;
       let dbh = EzPG.connect database in
-      EzPG.init dbh;
+      EzPG.init ?witness dbh;
       dbh
   in
   if !old_info then EzPG.may_upgrade_old_info ~verbose dbh;
