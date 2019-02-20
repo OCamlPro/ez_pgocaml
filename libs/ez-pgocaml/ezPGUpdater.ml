@@ -7,6 +7,7 @@ let main database ?(downgrades=[]) ~upgrades =
   let target = ref max_version in
   let old_info = ref false in
   let allow_downgrade = ref false in
+  let use_current = ref false in
   Arg.parse [
       "--verbose", Arg.Set verbose, " Set verbose mode";
       "--witness", Arg.String (fun s -> witness := Some s),
@@ -29,6 +30,7 @@ let main database ?(downgrades=[]) ~upgrades =
       "VERSION Target version VERSION";
       "--old-info", Arg.Set old_info, " Use old 'info' table name";
       "--allow-downgrade", Arg.Set allow_downgrade, " Allow downgrade";
+      "--use-current", Arg.Set use_current, " Use current downgrades instead of DB";
     ] (fun s -> database := s)
             (Printf.sprintf
                "database-updater [OPTIONS] [database] (default %S)"
@@ -47,8 +49,10 @@ let main database ?(downgrades=[]) ~upgrades =
       EzPG.init ?witness dbh;
       dbh
   in
+  let downgrades = if !use_current then Some downgrades else None in
+  Printf.eprintf "Use current %b %b\n%!" !use_current (downgrades = None);
   if !old_info then EzPG.may_upgrade_old_info ~verbose dbh;
   EzPG.upgrade_database
     ~allow_downgrade: !allow_downgrade
-    ~target ~verbose ?witness dbh ~upgrades ~downgrades;
+    ~target ~verbose ?witness dbh ~upgrades ?downgrades;
   EzPG.close dbh

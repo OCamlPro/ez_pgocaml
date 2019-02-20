@@ -57,3 +57,14 @@ val printf :
   'a PGOCaml.t -> ('b, unit, string, unit) format4 -> 'b
 
 val may_upgrade_old_info : ?verbose:bool -> 'a PGOCaml.t -> unit
+
+(* Add columns row_created_ and row_modified_ to a table,
+   automatically updated in INSERT and UPDATE by a trigger.*)
+module Mtimes : sig
+
+  val upgrade_init : string list
+  val downgrade_init : string list
+  val upgrade_table : string -> string list
+  val downgrade_table : string -> string list
+
+  end
