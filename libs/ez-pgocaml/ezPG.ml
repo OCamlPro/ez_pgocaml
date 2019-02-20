@@ -168,7 +168,7 @@ let check_upgrade dbh ~target =
     {| SELECT value FROM ezpg_info WHERE name = 'version' |};
   ()
 
-let upgrade_version ~target ~allow_downgrade ~upgrades ~downgrades
+let upgrade_version ~target ~allow_downgrade ~upgrades ?downgrades
     ?witness dbh version =
   if version = target then
     Printf.printf "EzPG: database is up-to-date at version %d\n%!"
@@ -207,32 +207,46 @@ let upgrade_version ~target ~allow_downgrade ~upgrades ~downgrades
       exit 2
     end;
 
-    let version = ref version in
-    while !version > target do
-      Printf.eprintf "version = %d\n%!" !version;
-      begin
-        try
-          let cmds = List.assoc !version downgrades in
-          begin_tr dbh;
-          downgrade ~dbh cmds ~version:(!version-1);
-          set_version dbh (!version-1);
-          end_tr dbh;
-          touch_witness ?witness !version;
-          version := !version -1;
-        with Not_found ->
-          Printf.eprintf "Your database version %d is unsupported.\n" !version;
-          Printf.eprintf "Maximal supported version is %d.\n%!" target;
-          Printf.eprintf "Aborting.\n%!";
-          exit 2
-      end;
-    done;
+    let rec iter version =
+      if version > target then
+        begin
+          Printf.eprintf "version = %d\n%!" version;
+          match downgrades with
+          | None ->
+            printf dbh "SELECT command FROM ezpg_downgrades WHERE version=%d" (version-1) ~callback:(fun res ->
+                match res with
+                | None -> assert false
+                | Some rows ->
+                  Printf.eprintf "From DB\n%!";
+                  let cmds = List.map List.hd rows in
+                  iter2 version cmds
+              )
+          | Some downgrades ->
+            Printf.eprintf "Using current commands\n%!";
+            match List.assoc version downgrades with
+            | exception Not_found ->
+              Printf.eprintf "Your database version %d is unsupported.\n" version;
+              Printf.eprintf "Maximal supported version is %d.\n%!" target;
+              Printf.eprintf "Aborting.\n%!";
+              exit 2
+            | cmds ->
+              iter2 version cmds
+        end
+    and iter2 version cmds =
+      begin_tr dbh;
+      downgrade ~dbh cmds ~version:(version-1);
+      set_version dbh (version-1);
+      end_tr dbh;
+      touch_witness ?witness version;
+      iter (version -1)
+    in
+    iter version;
     check_upgrade dbh ~target
-
 
   end
 
 let upgrade_database ?(verbose=false)
-    ?(downgrades=[])
+    ?downgrades
     ?(allow_downgrade = false)
     ~upgrades
     ?(target = List.length upgrades) ?witness dbh =
@@ -250,7 +264,7 @@ let upgrade_database ?(verbose=false)
              0
          in
          upgrade_version ~target ~allow_downgrade
-           ?witness dbh version ~upgrades ~downgrades
+           ?witness dbh version ~upgrades ?downgrades
        )
     {| SELECT value FROM ezpg_info WHERE name = 'version'  |}
 
@@ -268,3 +282,56 @@ let may_upgrade_old_info ?(verbose=true) dbh =
         | _ -> ()
       )
     {| SELECT value FROM info WHERE name = 'version'  |}
+
+
+module Mtimes = struct
+
+  let upgrade_init =
+    [
+  {|CREATE OR REPLACE FUNCTION update_row_modified_function_()
+    RETURNS TRIGGER
+    AS
+    $$
+    BEGIN
+    -- ASSUMES the table has a column named exactly "row_modified_".
+    -- Fetch date-time of actual current moment from clock, rather than start of statement or start of transaction.
+    NEW.row_modified_ = clock_timestamp();
+    RETURN NEW;
+    END;
+    $$
+    language 'plpgsql'
+|}
+]
+
+  let downgrade_init =
+    [ {| DROP FUNCTION update_row_modified_function_ |} ]
+
+  let upgrade_table table =
+    [
+      Printf.sprintf {|
+ALTER TABLE %s
+   ADD COLUMN row_modified_ TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+      |} table;
+      Printf.sprintf {|
+ALTER TABLE %s
+   ADD COLUMN row_created_ TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+|} table;
+
+      Printf.sprintf {|
+CREATE TRIGGER row_mod_on_%s_trigger_
+BEFORE UPDATE
+ON %s
+FOR EACH ROW
+EXECUTE PROCEDURE update_row_modified_function_();
+|} table table
+    ]
+
+  let downgrade_table table =
+    [
+      Printf.sprintf {| DROP TRIGGER row_mod_on_%s_trigger_|} table;
+      Printf.sprintf {| ALTER TABLE %s DROP COLUMN row_created_ |} table;
+      Printf.sprintf {| ALTER TABLE %s DROP COLUMN row_modified_ |} table;
+    ]
+
+
+end
