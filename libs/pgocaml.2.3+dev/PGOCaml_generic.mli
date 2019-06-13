@@ -113,6 +113,8 @@ val transact :
 
 (** {6 Serial column} *)
 
+val copy : instr:string -> data:string list list -> 'a t -> unit monad
+
 val serial : 'a t -> string -> int64 monad
 (** This is a shorthand for [SELECT CURRVAL(serial)].
 

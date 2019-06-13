@@ -114,6 +114,8 @@ val transact :
 
 (** {6 Serial column} *)
 
+val copy : instr:string -> data:string list list -> 'a t -> unit monad
+
 val serial : 'a t -> string -> int64 monad
 (** This is a shorthand for [SELECT CURRVAL(serial)].  For a table
   * called [table] with serial column [id] you would typically
@@ -371,6 +373,15 @@ let debug_protocol = false
 
 (*----- Code to generate messages for the back-end. -----*)
 
+let escape_string str =
+  let buf = Buffer.create 128 in
+  for i = 0 to String.length str - 1 do
+    match str.[i] with
+      | '"' | '\\' as x -> Buffer.add_char buf '\\'; Buffer.add_char buf x
+      | x -> Buffer.add_char buf x
+  done;
+  Buffer.contents buf
+
 let new_message typ =
   let buf = Buffer.create 128 in
   buf, Some typ
@@ -507,6 +518,10 @@ type msg_t =
   | BindComplete
   | CloseComplete
   | CommandComplete of string
+  | CopyDone
+  | CopyData of string
+  | CopyInResponse of (int * int * int list)
+  | CopyOutResponse of (int * int * int list)
   | DataRow of (int * string) list
   | EmptyQueryResponse
   | ErrorResponse of (char * string) list
@@ -534,6 +549,19 @@ let string_of_msg_t = function
   | CloseComplete -> "CloseComplete"
   | CommandComplete str ->
       sprintf "CommandComplete %S" str
+  | CopyDone -> "CopyDone"
+  | CopyInResponse (format, nb_col, format_list) ->
+    sprintf "CopyInResponse %d %d %S"
+      format
+      nb_col
+      (String.concat " " @@ List.map string_of_int format_list)
+  | CopyOutResponse (format, nb_col, format_list) ->
+    sprintf "CopyOutResponse %d %d %S"
+      format
+      nb_col
+      (String.concat " " @@ List.map string_of_int format_list)
+  | CopyData str ->
+    sprintf "CopyData %S" str
   | DataRow fields ->
       sprintf "DataRow [%s]"
 	(String.concat "; "
@@ -761,6 +789,32 @@ let parse_backend_message (typ, msg) =
 	  fields := oid :: !fields
 	done;
 	ParameterDescription (List.rev !fields)
+
+    | 'H' ->
+      let _len = get_int32 () in
+      let format = get_byte "get_int8" in
+      let nb_row = get_int16 () in
+      let format_list = ref [] in
+      for i = 0 to nb_row - 1 do
+        format_list := get_int16 () :: !format_list
+      done ;
+      CopyOutResponse (format, nb_row, !format_list)
+
+    | 'G' ->
+      let format = get_byte "get_int8" in
+      let nb_row = get_int16 () in
+      let format_list = ref [] in
+      for i = 0 to nb_row - 1 do
+        format_list := get_int16 () :: !format_list
+      done ;
+      CopyInResponse (format, nb_row, !format_list)
+
+    | 'd' ->
+      let str = get_n_bytes (len - 4) in
+      CopyData str
+
+    | 'c' ->
+      CopyDone
 
     | _ -> UnknownMessage (typ, msg) in
 
@@ -1148,7 +1202,7 @@ let prepare conn ~query ?(name = "") ?(types = []) () =
   let details = [ "query"; query; "name"; name ] in
   profile_op conn.uuid "prepare" details do_prepare
 
-let iter_execute conn name portal params proc () =
+let iter_execute conn ?(data=[]) name portal params proc () =
     (* Bind *)
     let msg = new_message 'B' in
     add_string msg portal;
@@ -1213,6 +1267,42 @@ let iter_execute conn name portal params proc () =
 	   * the SIGHUP signal to the postmaster.
 	   *)
 	  loop ()
+      | CopyDone ->
+        loop ()
+      | CopyData str ->
+        loop ()
+      | CopyOutResponse _ ->
+        loop ()
+      | CopyInResponse _ ->
+
+        let msgs =
+          List.map (fun row ->
+              let msg = new_message 'd' in
+              begin match row with
+                | [ col ] ->
+                  add_string_no_trailing_nil msg col
+                | col :: tl ->
+                  add_string_no_trailing_nil msg col ;
+                  List.iter (fun col ->
+                      add_byte msg 0x009 ;
+                      add_string_no_trailing_nil msg col)
+                    tl
+                | _ -> ()
+              end ;
+              add_byte msg 0x0a ;
+              msg)
+            data in
+
+        ignore @@ List.map (fun msg -> send_message conn msg >>= fun () -> return ()) msgs ;
+
+        let msg = new_message 'c' in
+        send_message conn msg >>= fun () ->
+        flush_msg conn >>= fun () ->
+
+        let msg = new_message 'S' in
+        send_message conn msg >>= fun () ->
+
+        loop ()
       | _ ->
 	  fail
 	    (Error ("PGOCaml: unknown response message: " ^
@@ -1220,9 +1310,9 @@ let iter_execute conn name portal params proc () =
     in
     loop ()
 
-let do_execute conn name portal params rev () =
+let do_execute conn ?(data=[]) name portal params rev () =
     let rows = ref [] in
-    iter_execute conn name portal params
+    iter_execute conn ~data name portal params
         (fun fields -> return (rows := fields :: !rows)) () >>= fun () ->
     (* Return the result rows. *)
     return (if rev then List.rev !rows else !rows)
@@ -1287,6 +1377,14 @@ let transact conn ?isolation ?access ?deferrable f =
        rollback conn >>= fun () ->
        fail e
     )
+
+let copy ~instr ~data conn =
+  let query = sprintf "COPY %s FROM STDIN" instr in
+  prepare conn ~query () >>= fun () ->
+  let do_execute = do_execute ~data conn "" "" [] true in
+  let details = [ "name"; ""; "portal"; "" ] in
+  ignore @@ profile_op conn.uuid "execute" details do_execute ;
+  return ()
 
 let serial conn name =
   let query = "select currval ($1)" in
@@ -1583,15 +1681,6 @@ let string_of_any_array xs =
 let option_map f = function
   | Some x -> Some (f x)
   | None -> None
-
-let escape_string str =
-  let buf = Buffer.create 128 in
-  for i = 0 to String.length str - 1 do
-    match str.[i] with
-      | '"' | '\\' as x -> Buffer.add_char buf '\\'; Buffer.add_char buf x
-      | x -> Buffer.add_char buf x
-  done;
-  Buffer.contents buf
 
 let string_of_bool_array a = string_of_any_array (List.map (option_map string_of_bool) a)
 let string_of_int32_array a = string_of_any_array (List.map (option_map Int32.to_string) a)
