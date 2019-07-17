@@ -245,12 +245,20 @@ let upgrade_version ~target ~allow_downgrade ~upgrades ?downgrades
 
   end
 
+let set_search_path ?verbose dbh search_path =
+  printf ?verbose dbh
+    "ALTER ROLE session_user SET search_path TO %s" (String.concat ", " search_path)
+
 let upgrade_database ?(verbose=false)
+    ?search_path
     ?downgrades
     ?(allow_downgrade = false)
     ~upgrades
     ?(target = List.length upgrades) ?witness dbh =
 
+  (match search_path with
+   | None -> ()
+   | Some search_path -> set_search_path ~verbose dbh search_path);
   printf ~verbose dbh
     ~callback:(fun res ->
          let version =
@@ -282,7 +290,6 @@ let may_upgrade_old_info ?(verbose=true) dbh =
         | _ -> ()
       )
     {| SELECT value FROM info WHERE name = 'version'  |}
-
 
 module Mtimes = struct
 

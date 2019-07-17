@@ -24,6 +24,7 @@ val execs : (* same as exec, but with a list of queries *)
 
 val upgrade_database :
   ?verbose:bool -> (* print commands, false by default *)
+  ?search_path: string list ->
   ?downgrades: (int * string list) list ->
   ?allow_downgrade: bool ->
   upgrades: (* migration scripts *)
@@ -60,6 +61,7 @@ val may_upgrade_old_info : ?verbose:bool -> 'a PGOCaml.t -> unit
 
 (* Add columns row_created_ and row_modified_ to a table,
    automatically updated in INSERT and UPDATE by a trigger.*)
+
 module Mtimes : sig
 
   val upgrade_init : string list

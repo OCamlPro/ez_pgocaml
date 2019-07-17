@@ -1,5 +1,5 @@
 
-let main database ?(downgrades=[]) ~upgrades =
+let main ?search_path database ?(downgrades=[]) ~upgrades =
   let database = ref database in
   let verbose = ref false in
   let witness = ref None in
@@ -53,6 +53,7 @@ let main database ?(downgrades=[]) ~upgrades =
   Printf.eprintf "Use current %b %b\n%!" !use_current (downgrades = None);
   if !old_info then EzPG.may_upgrade_old_info ~verbose dbh;
   EzPG.upgrade_database
-    ~allow_downgrade: !allow_downgrade
+    ?search_path
+    ~allow_downgrade:!allow_downgrade
     ~target ~verbose ?witness dbh ~upgrades ?downgrades;
   EzPG.close dbh
