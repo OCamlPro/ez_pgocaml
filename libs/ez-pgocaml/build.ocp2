@@ -6,6 +6,6 @@ OCaml.library("ez-pgocaml", ocaml+
       "ezPGUpdater.ml";
     ];
     requires = [
-          "ocplib-pgocaml"; 
+      "pgocaml";
     ];
   });
