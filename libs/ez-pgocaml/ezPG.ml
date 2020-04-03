@@ -1,12 +1,12 @@
 exception ExecFailed of string
 
-let connect ?host ?port ?user ?password database =
+let connect ?host ?port ?user ?password ?unix_domain_socket_dir database =
   let (dbh : 'a PGOCaml.t PGOCaml.monad) =
-    PGOCaml.connect ?host ?port ?user ?password ~database ()
+    PGOCaml.connect ?host ?port ?user ?password ?unix_domain_socket_dir ~database ()
   in
   dbh
 
-let close dbh =   PGOCaml.close dbh
+let close dbh = PGOCaml.close dbh
 
 let exec ?(verbose=true) dbh ?callback query =
   let res =
@@ -52,13 +52,13 @@ let printf ?verbose ?callback dbh fmt =
   Printf.kprintf (fun s -> exec ?verbose ?callback dbh s) fmt
 
 
-let createdb ?(verbose=true) database =
-  let dbh = connect "postgres" in
+let createdb ?(verbose=true) ?host ?port ?unix_domain_socket_dir database =
+  let dbh = connect ?host ?port ?unix_domain_socket_dir "postgres" in
   printf ~verbose dbh "CREATE DATABASE %s" database;
   close dbh
 
-let dropdb ?(verbose=true) database =
-  let dbh = connect "postgres" in
+let dropdb ?(verbose=true) ?host ?port ?unix_domain_socket_dir database =
+  let dbh = connect ?host ?port ?unix_domain_socket_dir "postgres" in
   printf ~verbose dbh "DROP DATABASE %s" database;
   close dbh
 

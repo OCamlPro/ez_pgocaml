@@ -1,17 +1,17 @@
 
-# DATABASE=local-db (name of the local copy of the DB)
+# DBNAME=local-db (name of the local copy of the DB)
 # DBUPDATER=db-updater (name of the program that updates the db)
 # DBOLDINFO=--old-info
 
 DBWITNESS=--witness db-version.txt
 
 db-update: db-autoconf db-version.txt
-	PGDATABASE=$(DATABASE) $(MAKE) db-update-check
+	$(MAKE) db-update-check
 
 db-update-check:
 	if ocp-build $(DBUPDATER) ; then \
         	./_obuild/$(DBUPDATER)/$(DBUPDATER).asm \
-                   $(DBOLDINFO) $(DBWITNESS) $(DATABASE); \
+                   $(DBOLDINFO) $(DBWITNESS) $(DBNAME) $(DBHOST) $(DBPORT) $(DBSOCKETDIR) $(DBUSER) $(DBPASSWORD); \
 	else \
 	exit 0; \
 	fi
@@ -23,10 +23,10 @@ db-autoconf:
 	@echo "dbupdater=\"$(DBUPDATER)\";" >> ocp-autoconf.d/ezpg.ocp2inc
 	@echo "database=\"$(DATABASE)\";" >> ocp-autoconf.d/ezpg.ocp2inc
 
-db-version.txt: 
+db-version.txt:
 	echo 0 > db-version.txt
 
 dropdb:
-	./_obuild/$(DBUPDATER)/$(DBUPDATER).asm --dropdb
+	./_obuild/$(DBUPDATER)/$(DBUPDATER).asm $(DBNAME) $(DBHOST) $(DBPORT) $(DBSOCKETDIR) $(DBUSER) $(DBPASSWORD) --dropdb
 
 .PHONY: db-autoconf
