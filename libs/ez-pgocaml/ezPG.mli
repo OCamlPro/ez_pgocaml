@@ -55,7 +55,7 @@ val begin_tr : 'a PGOCaml.t -> unit
 val end_tr : 'a PGOCaml.t -> unit
 val abort_tr : 'a PGOCaml.t -> unit
 
-val in_tr : 'a PGOCaml.t -> ('a PGOCaml.t -> 'b) -> unit
+val in_tr : 'a PGOCaml.t -> ('a PGOCaml.t -> unit) -> unit
 
 val upgrade :
   ?verbose:bool -> version:int ->
