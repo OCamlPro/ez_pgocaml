@@ -93,7 +93,7 @@ let ezpg_to_version_1 dbh =
   ()
 
 let init ?witness dbh =
-  exec dbh "CREATE SCHEMA db";
+  exec dbh "CREATE SCHEMA IF NOT EXISTS db";
   exec dbh "SET search_path TO db,public";
   printf dbh {| CREATE TABLE ezpg_info (name VARCHAR PRIMARY KEY, value INTEGER) |};
   printf dbh {| INSERT INTO ezpg_info VALUES ('version',0) |};
