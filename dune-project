@@ -1,8 +1,5 @@
 (lang dune 2.0)
 (name ez-pgocaml)
-(allow_approximate_merlin)
-
-(generate_opam_files true)
 
 (source (github ocamlpro/ez-pgocaml))
 (license GPL-3.0-or-later)

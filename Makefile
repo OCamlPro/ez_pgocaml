@@ -1,9 +1,6 @@
 
--include autoconf/Makefile.config
 
 all: build
-
--include ocp-autoconf.d/Makefile
 
 build:
 	dune build
@@ -11,16 +8,10 @@ build:
 install:
 	dune install
 
-ocp-build-conf:
-	ocp-autoconf
+clean:
+	dune clean
 
-ocp-build: ocp-build-build $(PROJECT_BUILD)
-
-ocp-build-install: ocp-build-install $(PROJECT_INSTALL)
-
-ocp-build-clean: ocp-build-clean $(PROJECT_CLEAN)
-
-distclean: clean ocp-distclean $(PROJECT_DISTCLEAN)
-	find . -name '*~' -exec rm -f {} \;
-
--include autoconf/Makefile.rules
+doc:
+	dune build @doc
+	@mkdir -p docs
+	@cp -rf _build/default/_doc/_html/* docs
