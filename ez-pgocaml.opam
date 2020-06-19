@@ -25,3 +25,7 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/ocamlpro/ez-pgocaml.git"
+pin-depends: [
+  [ "pgocaml.4.2.1" "git+https://github.com/darioteixeira/pgocaml.git" ]
+  [ "pgocaml_ppx.4.2.1" "git+https://github.com/darioteixeira/pgocaml.git" ]
+]
