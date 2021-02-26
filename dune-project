@@ -11,4 +11,4 @@
  (name ez-pgocaml)
  (synopsis "a simple library to work with pgocaml")
  (depends
-  (pgocaml (>= 4.2.1))))
+  (pgocaml (>= 4.2.2))))

@@ -8,7 +8,7 @@ homepage: "https://github.com/ocamlpro/ez-pgocaml"
 bug-reports: "https://github.com/ocamlpro/ez-pgocaml/issues"
 depends: [
   "dune" {>= "2.0"}
-  "pgocaml" {>= "4.2.1"}
+  "pgocaml" {>= "4.2.2"}
 ]
 build: [
   ["dune" "subst"] {pinned}
@@ -25,7 +25,3 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/ocamlpro/ez-pgocaml.git"
-pin-depends: [
-  [ "pgocaml.4.2.1" "git+https://github.com/darioteixeira/pgocaml.git" ]
-  [ "pgocaml_ppx.4.2.1" "git+https://github.com/darioteixeira/pgocaml.git" ]
-]
