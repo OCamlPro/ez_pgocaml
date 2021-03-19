@@ -1,5 +1,5 @@
 
-let main database ?(downgrades=[]) ~upgrades =
+let main ?(downgrades=[]) ~upgrades database =
   let database = ref database in
   let verbose = ref false in
   let witness = ref None in
