@@ -1,3 +1,13 @@
+(**************************************************************************)
+(*                                                                        *)
+(*    Copyright 2018-2021 OCamlPro                                        *)
+(*                                                                        *)
+(*  All rights reserved. This file is distributed under the terms of the  *)
+(*  GNU Lesser General Public License version 2.1, with the special       *)
+(*  exception on linking described in the file LICENSE.                   *)
+(*                                                                        *)
+(**************************************************************************)
+
 exception ExecFailed of string
 
 let connect ?host ?port ?user ?password ?unix_domain_socket_dir database =
@@ -51,7 +61,6 @@ let execs ?verbose dbh queries =
 let printf ?verbose ?callback dbh fmt =
   Printf.kprintf (fun s -> exec ?verbose ?callback dbh s) fmt
 
-
 let createdb ?(verbose=true) ?host ?port ?unix_domain_socket_dir database =
   let dbh = connect ?host ?port ?unix_domain_socket_dir "postgres" in
   printf ~verbose dbh "CREATE DATABASE %s" database;
@@ -86,18 +95,22 @@ let touch_witness ?witness version =
        Printf.fprintf oc "%d\n" version;
        close_out oc
 
-let ezpg_to_version_1 dbh =
-  exec dbh {| CREATE TABLE ezpg_upgrades (version INTEGER, command TEXT NOT NULL) |};
-  exec dbh {| CREATE TABLE ezpg_downgrades (version INTEGER, command TEXT NOT NULL) |};
-  printf dbh {| INSERT INTO ezpg_info VALUES ('ezpg_version',0) |};
+let ezpg_to_version_1 ?verbose dbh =
+  exec ?verbose dbh {| CREATE TABLE ezpg_upgrades (version INTEGER, command TEXT NOT NULL) |};
+  exec ?verbose dbh {| CREATE TABLE ezpg_downgrades (version INTEGER, command TEXT NOT NULL) |};
+  printf ?verbose dbh {| INSERT INTO ezpg_info VALUES ('ezpg_version',0) |};
   ()
 
-let init ?witness dbh =
-  exec dbh "CREATE SCHEMA IF NOT EXISTS db";
-  exec dbh "SET search_path TO db,public";
-  printf dbh {| CREATE TABLE ezpg_info (name VARCHAR PRIMARY KEY, value INTEGER) |};
-  printf dbh {| INSERT INTO ezpg_info VALUES ('version',0) |};
-  ezpg_to_version_1 dbh;
+let init ?verbose ?witness ?searchpath dbh =
+  begin match searchpath with
+    | None -> ()
+    | Some db ->
+      printf ?verbose dbh "CREATE SCHEMA IF NOT EXISTS %s" db;
+      printf ?verbose dbh "SET search_path TO %s,public" db;
+  end;
+  printf ?verbose dbh {| CREATE TABLE ezpg_info (name VARCHAR PRIMARY KEY, value INTEGER) |};
+  printf ?verbose dbh {| INSERT INTO ezpg_info VALUES ('version',0) |};
+  ezpg_to_version_1 ?verbose dbh;
   touch_witness ?witness 0;
   ()
 

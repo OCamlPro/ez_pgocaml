@@ -1,3 +1,12 @@
+(**************************************************************************)
+(*                                                                        *)
+(*    Copyright 2018-2021 OCamlPro                                        *)
+(*                                                                        *)
+(*  All rights reserved. This file is distributed under the terms of the  *)
+(*  GNU Lesser General Public License version 2.1, with the special       *)
+(*  exception on linking described in the file LICENSE.                   *)
+(*                                                                        *)
+(**************************************************************************)
 
 val connect :
   ?host:string ->
@@ -35,7 +44,11 @@ val upgrade_database :
   unit
 
 val touch_witness : ?witness:string -> int -> unit
-val init : ?witness:string -> 'a PGOCaml.t -> unit
+
+(* ~searchpath can be used to register meta tables in a different
+   domain (for example, "db") *)
+val init : ?verbose:bool -> ?witness:string ->
+  ?searchpath:string -> 'a PGOCaml.t -> unit
 
 (* Useful functions to create the initial database *)
 val createdb :
