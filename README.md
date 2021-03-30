@@ -1,6 +1,6 @@
-[![Travis-CI Build Status](https://travis-ci.org/OCamlPro/ez-pgocaml.svg?branch=master)](https://travis-ci.org/OCamlPro/ez-pgocaml)
+[![Travis-CI Build Status](https://travis-ci.org/OCamlPro/ez_pgocaml.svg?branch=master)](https://travis-ci.org/OCamlPro/ez_pgocaml)
 
-# ez-pgocaml : a simple library to work with pgocaml
+# ez_pgocaml : a simple library to work with pgocaml
 
 
 ## Installation
@@ -8,7 +8,7 @@
 To build:
 ```
 opam pin .
-opam install ez-pgocaml
+opam install ez_pgocaml
 ```
 
 ## Usage
