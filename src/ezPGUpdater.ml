@@ -25,38 +25,38 @@ let main ?(downgrades=[]) ~upgrades database =
   let set_string_opt r = Arg.String (fun s -> r := Some s) in
   let set_int_opt r = Arg.Int (fun s -> r := Some s) in
   Arg.parse [
-      "--verbose", Arg.Set verbose, " Set verbose mode";
-      "--witness", set_string_opt witness,
-      "FILE Touch FILE if database is modified";
-      "--target", Arg.Int (fun n ->
-                      if n > max_version then begin
-                          Printf.eprintf "Cannot target version > %d\n%!"
-                                         max_version;
-                          exit 2
-                        end;
-                      target := n),
-      "VERSION Target version VERSION";
-      "--old-info", Arg.Set old_info, " Use old 'info' table name";
-      "--allow-downgrade", Arg.Set allow_downgrade, " Allow downgrade";
-      "--use-current", Arg.Set use_current, " Use current downgrades instead of DB";
-      "--database", Arg.Set_string database, "Set database name";
-      "--host", set_string_opt host, "Set database host";
-      "--port", set_int_opt port, "Set database port";
-      "--user", set_string_opt user, "Set database user";
-      "--password", set_string_opt password, "Set database password";
-      "--socket-dir", set_string_opt unix_domain_socket_dir, "Set database unix domain socket directory";
-      "--dropdb", Arg.Unit (fun () ->
-          EzPG.dropdb
-            ?host:!host ?port:!port ?unix_domain_socket_dir:!unix_domain_socket_dir
-            !database;
-          exit 0), " Drop database";
-      "--createdb", Arg.Unit (fun () ->
-          EzPG.createdb
-            ?host:!host ?port:!port ?unix_domain_socket_dir:!unix_domain_socket_dir
-            !database;
-          exit 0), " Create database";
+    "--verbose", Arg.Set verbose, " Set verbose mode";
+    "--witness", set_string_opt witness,
+    "FILE Touch FILE if database is modified";
+    "--target", Arg.Int (fun n ->
+        if n > max_version then begin
+          Printf.eprintf "Cannot target version > %d\n%!"
+            max_version;
+          exit 2
+        end;
+        target := n),
+    "VERSION Target version VERSION";
+    "--old-info", Arg.Set old_info, " Use old 'info' table name";
+    "--allow-downgrade", Arg.Set allow_downgrade, " Allow downgrade";
+    "--use-current", Arg.Set use_current, " Use current downgrades instead of DB";
+    "--database", Arg.Set_string database, "Set database name";
+    "--host", set_string_opt host, "Set database host";
+    "--port", set_int_opt port, "Set database port";
+    "--user", set_string_opt user, "Set database user";
+    "--password", set_string_opt password, "Set database password";
+    "--socket-dir", set_string_opt unix_domain_socket_dir, "Set database unix domain socket directory";
+    "--dropdb", Arg.Unit (fun () ->
+        EzPG.dropdb
+          ?host:!host ?port:!port ?unix_domain_socket_dir:!unix_domain_socket_dir
+          !database;
+        exit 0), " Drop database";
+    "--createdb", Arg.Unit (fun () ->
+        EzPG.createdb
+          ?host:!host ?port:!port ?unix_domain_socket_dir:!unix_domain_socket_dir
+          !database;
+        exit 0), " Create database";
 
-    ] (fun _s -> ()) "database-updater [OPTIONS]";
+  ] (fun _s -> ()) "database-updater [OPTIONS]";
   let database = !database in
   let verbose = !verbose in
   let witness = !witness in
@@ -76,7 +76,7 @@ let main ?(downgrades=[]) ~upgrades database =
       dbh
   in
   let downgrades = if !use_current then Some downgrades else None in
-  Printf.eprintf "Use current %b %b\n%!" !use_current (downgrades = None);
+  if verbose then Printf.printf "Use current %b %b\n%!" !use_current (downgrades = None);
   if !old_info then EzPG.may_upgrade_old_info ~verbose dbh;
   EzPG.upgrade_database
     ~allow_downgrade: !allow_downgrade

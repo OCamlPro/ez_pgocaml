@@ -7,8 +7,12 @@ license: "GPL-3.0-or-later"
 homepage: "https://github.com/ocamlpro/ez_pgocaml"
 bug-reports: "https://github.com/ocamlpro/ez_pgocaml/issues"
 depends: [
-  "dune" {>= "2.0"}
+  "ocaml" {>= "4.8.0"}
+  "dune" {>= "2.6"}
   "pgocaml" {>= "4.2.2"}
+]
+depopts: [
+  "lwt"
 ]
 build: [
   ["dune" "subst"] {pinned}

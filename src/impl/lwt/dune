@@ -1,0 +1,6 @@
+(library
+ (name ezPG_lwt)
+ (public_name ez_pgocaml.lwt)
+ (optional)
+ (modules thread ezPG_lwt)
+ (libraries pgocaml lwt.unix))

@@ -1,4 +1,4 @@
-(lang dune 2.0)
+(lang dune 2.6)
 (name ez_pgocaml)
 
 (source (github ocamlpro/ez_pgocaml))
@@ -11,4 +11,5 @@
  (name ez_pgocaml)
  (synopsis "a simple library to work with pgocaml")
  (depends
-  (pgocaml (>= 4.2.2))))
+  (pgocaml (>= 4.2.2)))
+ (depopts lwt))
