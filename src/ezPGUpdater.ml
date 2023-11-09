@@ -8,7 +8,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-let main ?(downgrades=[]) ~upgrades database =
+let main ?(downgrades=[]) ?host ?port ?user ?password  ~upgrades database =
   let database = ref database in
   let verbose = ref false in
   let witness = ref None in
@@ -17,10 +17,10 @@ let main ?(downgrades=[]) ~upgrades database =
   let old_info = ref false in
   let allow_downgrade = ref false in
   let use_current = ref false in
-  let host = ref None in
-  let port = ref None in
-  let user = ref None in
-  let password = ref None in
+  let host = ref host in
+  let port = ref port in
+  let user = ref user in
+  let password = ref password in
   let unix_domain_socket_dir = ref None in
   let set_string_opt r = Arg.String (fun s -> r := Some s) in
   let set_int_opt r = Arg.Int (fun s -> r := Some s) in
