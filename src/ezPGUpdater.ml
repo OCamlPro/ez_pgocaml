@@ -8,7 +8,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-let main ?(downgrades=[]) ?host ?port ?user ?password  ~upgrades database =
+let main ?(downgrades=[]) ?host ?port ?user ?password ~upgrades database =
   let database = ref database in
   let verbose = ref false in
   let witness = ref None in
@@ -52,8 +52,8 @@ let main ?(downgrades=[]) ?host ?port ?user ?password  ~upgrades database =
         exit 0), " Drop database";
     "--createdb", Arg.Unit (fun () ->
         EzPG.createdb
-          ?host:!host ?port:!port ?unix_domain_socket_dir:!unix_domain_socket_dir
-          !database;
+          ?host:!host ?port:!port ?user:!user ?password:!password
+          ?unix_domain_socket_dir:!unix_domain_socket_dir !database;
         exit 0), " Create database";
 
   ] (fun _s -> ()) "database-updater [OPTIONS]";

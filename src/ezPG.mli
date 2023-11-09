@@ -55,12 +55,16 @@ val createdb :
   ?verbose:bool ->
   ?host:string ->
   ?port:int ->
+  ?user:string ->
+  ?password:string ->
   ?unix_domain_socket_dir:string ->
   string -> unit
 val dropdb :
   ?verbose:bool ->
   ?host:string ->
   ?port:int ->
+  ?user:string ->
+  ?password:string ->
   ?unix_domain_socket_dir:string ->
   string -> unit
 

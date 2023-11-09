@@ -61,13 +61,21 @@ let execs ?verbose dbh queries =
 let printf ?verbose ?callback dbh fmt =
   Printf.kprintf (fun s -> exec ?verbose ?callback dbh s) fmt
 
-let createdb ?(verbose=true) ?host ?port ?unix_domain_socket_dir database =
-  let dbh = connect ?host ?port ?unix_domain_socket_dir "postgres" in
+let createdb
+    ?(verbose=true) ?host
+    ?port ?user
+    ?password ?unix_domain_socket_dir
+    database =
+  let dbh = connect ?host ?port ?user ?password ?unix_domain_socket_dir "postgres" in
   printf ~verbose dbh "CREATE DATABASE %s" database;
   close dbh
 
-let dropdb ?(verbose=true) ?host ?port ?unix_domain_socket_dir database =
-  let dbh = connect ?host ?port ?unix_domain_socket_dir "postgres" in
+let dropdb
+    ?(verbose=true) ?host
+    ?port ?user
+    ?password ?unix_domain_socket_dir
+    database =
+  let dbh = connect ?host ?port ?user ?password ?unix_domain_socket_dir "postgres" in
   printf ~verbose dbh "DROP DATABASE %s" database;
   close dbh
 
